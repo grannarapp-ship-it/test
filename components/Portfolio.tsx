@@ -3,7 +3,9 @@
 import { useEffect, useState } from "react";
 import {
   gainLoss,
+  gainLossPercent,
   loadHoldings,
+  portfolioTotals,
   saveHoldings,
   type Holding,
   type HoldingInput,
@@ -14,6 +16,16 @@ const currency = new Intl.NumberFormat("en-US", {
   style: "currency",
   currency: "USD",
 });
+
+function formatPercent(value: number) {
+  return `${value >= 0 ? "+" : ""}${value.toFixed(1)}%`;
+}
+
+function gainLossClass(value: number) {
+  return value >= 0
+    ? "text-green-600 dark:text-green-400"
+    : "text-red-600 dark:text-red-400";
+}
 
 export function Portfolio() {
   const [holdings, setHoldings] = useState<Holding[]>([]);
@@ -48,6 +60,8 @@ export function Portfolio() {
     if (editingId === id) setEditingId(null);
   }
 
+  const totals = portfolioTotals(holdings);
+
   return (
     <div className="flex w-full max-w-3xl flex-col gap-8">
       <section>
@@ -63,75 +77,93 @@ export function Portfolio() {
             to see it here.
           </p>
         ) : (
-          <table className="w-full border-collapse text-sm">
-            <thead>
-              <tr className="border-b border-black/[.08] text-left dark:border-white/[.145]">
-                <th className="py-2 pr-2">Ticker</th>
-                <th className="py-2 pr-2">Shares</th>
-                <th className="py-2 pr-2">Cost basis</th>
-                <th className="py-2 pr-2">Current price</th>
-                <th className="py-2 pr-2">Gain/Loss</th>
-                <th className="py-2 pr-2" />
-              </tr>
-            </thead>
-            <tbody>
-              {holdings.map((holding) => {
-                if (editingId === holding.id) {
+          <>
+            <div className="mb-4 flex flex-col gap-2 rounded-md border border-black/[.08] p-4 text-sm sm:flex-row sm:justify-between dark:border-white/[.145]">
+              <div>
+                <div className="text-zinc-600 dark:text-zinc-400">Total cost basis</div>
+                <div className="font-medium">{currency.format(totals.costBasis)}</div>
+              </div>
+              <div>
+                <div className="text-zinc-600 dark:text-zinc-400">Total current value</div>
+                <div className="font-medium">{currency.format(totals.currentValue)}</div>
+              </div>
+              <div>
+                <div className="text-zinc-600 dark:text-zinc-400">Total gain/loss</div>
+                <div className={`font-medium ${gainLossClass(totals.gain)}`}>
+                  {totals.gain >= 0 ? "+" : ""}
+                  {currency.format(totals.gain)} ({formatPercent(totals.gainPercent)})
+                </div>
+              </div>
+            </div>
+            <table className="w-full border-collapse text-sm">
+              <thead>
+                <tr className="border-b border-black/[.08] text-left dark:border-white/[.145]">
+                  <th className="py-2 pr-2">Ticker</th>
+                  <th className="py-2 pr-2">Shares</th>
+                  <th className="py-2 pr-2">Cost basis</th>
+                  <th className="py-2 pr-2">Current price</th>
+                  <th className="py-2 pr-2">Gain/Loss</th>
+                  <th className="py-2 pr-2">Gain/Loss %</th>
+                  <th className="py-2 pr-2" />
+                </tr>
+              </thead>
+              <tbody>
+                {holdings.map((holding) => {
+                  if (editingId === holding.id) {
+                    return (
+                      <tr key={holding.id} className="border-b border-black/[.08] dark:border-white/[.145]">
+                        <td colSpan={7} className="py-3">
+                          <HoldingForm
+                            initialValue={holding}
+                            submitLabel="Save"
+                            onSubmit={(input) => updateHolding(holding.id, input)}
+                            onCancel={() => setEditingId(null)}
+                          />
+                        </td>
+                      </tr>
+                    );
+                  }
+
+                  const gl = gainLoss(holding);
+                  const glPercent = gainLossPercent(holding);
                   return (
-                    <tr key={holding.id} className="border-b border-black/[.08] dark:border-white/[.145]">
-                      <td colSpan={6} className="py-3">
-                        <HoldingForm
-                          initialValue={holding}
-                          submitLabel="Save"
-                          onSubmit={(input) => updateHolding(holding.id, input)}
-                          onCancel={() => setEditingId(null)}
-                        />
+                    <tr
+                      key={holding.id}
+                      className="border-b border-black/[.08] dark:border-white/[.145]"
+                    >
+                      <td className="py-2 pr-2 font-medium">{holding.ticker}</td>
+                      <td className="py-2 pr-2">{holding.shares}</td>
+                      <td className="py-2 pr-2">{currency.format(holding.costBasis)}</td>
+                      <td className="py-2 pr-2">{currency.format(holding.currentPrice)}</td>
+                      <td className={`py-2 pr-2 ${gainLossClass(gl)}`}>
+                        {gl >= 0 ? "+" : ""}
+                        {currency.format(gl)}
+                      </td>
+                      <td className={`py-2 pr-2 ${gainLossClass(glPercent)}`}>
+                        {formatPercent(glPercent)}
+                      </td>
+                      <td className="py-2 pr-2">
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => setEditingId(holding.id)}
+                            className="text-xs font-medium underline underline-offset-2"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => removeHolding(holding.id)}
+                            className="text-xs font-medium text-red-600 underline underline-offset-2 dark:text-red-400"
+                          >
+                            Remove
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
-                }
-
-                const gl = gainLoss(holding);
-                return (
-                  <tr
-                    key={holding.id}
-                    className="border-b border-black/[.08] dark:border-white/[.145]"
-                  >
-                    <td className="py-2 pr-2 font-medium">{holding.ticker}</td>
-                    <td className="py-2 pr-2">{holding.shares}</td>
-                    <td className="py-2 pr-2">{currency.format(holding.costBasis)}</td>
-                    <td className="py-2 pr-2">{currency.format(holding.currentPrice)}</td>
-                    <td
-                      className={`py-2 pr-2 ${
-                        gl >= 0
-                          ? "text-green-600 dark:text-green-400"
-                          : "text-red-600 dark:text-red-400"
-                      }`}
-                    >
-                      {gl >= 0 ? "+" : ""}
-                      {currency.format(gl)}
-                    </td>
-                    <td className="py-2 pr-2">
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => setEditingId(holding.id)}
-                          className="text-xs font-medium underline underline-offset-2"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => removeHolding(holding.id)}
-                          className="text-xs font-medium text-red-600 underline underline-offset-2 dark:text-red-400"
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                })}
+              </tbody>
+            </table>
+          </>
         )}
       </section>
     </div>
