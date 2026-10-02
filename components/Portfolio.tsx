@@ -30,6 +30,7 @@ function gainLossClass(value: number) {
 export function Portfolio() {
   const [holdings, setHoldings] = useState<Holding[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [removingId, setRemovingId] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
@@ -58,6 +59,7 @@ export function Portfolio() {
   function removeHolding(id: string) {
     setHoldings((prev) => prev.filter((holding) => holding.id !== id));
     if (editingId === id) setEditingId(null);
+    if (removingId === id) setRemovingId(null);
   }
 
   const totals = portfolioTotals(holdings);
@@ -143,20 +145,43 @@ export function Portfolio() {
                         {formatPercent(glPercent)}
                       </td>
                       <td className="py-2 pr-2">
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => setEditingId(holding.id)}
-                            className="text-xs font-medium underline underline-offset-2"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => removeHolding(holding.id)}
-                            className="text-xs font-medium text-red-600 underline underline-offset-2 dark:text-red-400"
-                          >
-                            Remove
-                          </button>
-                        </div>
+                        {removingId === holding.id ? (
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-zinc-600 dark:text-zinc-400">
+                              Remove?
+                            </span>
+                            <button
+                              onClick={() => removeHolding(holding.id)}
+                              className="text-xs font-medium text-red-600 underline underline-offset-2 dark:text-red-400"
+                            >
+                              Confirm
+                            </button>
+                            <button
+                              onClick={() => setRemovingId(null)}
+                              className="text-xs font-medium underline underline-offset-2"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => {
+                                setEditingId(holding.id);
+                                setRemovingId(null);
+                              }}
+                              className="text-xs font-medium underline underline-offset-2"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => setRemovingId(holding.id)}
+                              className="text-xs font-medium text-red-600 underline underline-offset-2 dark:text-red-400"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        )}
                       </td>
                     </tr>
                   );
