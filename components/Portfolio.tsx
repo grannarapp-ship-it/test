@@ -10,6 +10,7 @@ import {
   type Holding,
   type HoldingInput,
 } from "@/lib/portfolio";
+import { useLivePrices } from "@/lib/useLivePrices";
 import { HoldingForm } from "./HoldingForm";
 
 const currency = new Intl.NumberFormat("en-US", {
@@ -25,6 +26,14 @@ function gainLossClass(value: number) {
   return value >= 0
     ? "text-green-600 dark:text-green-400"
     : "text-red-600 dark:text-red-400";
+}
+
+function PriceUnavailable() {
+  return (
+    <span className="text-xs italic text-zinc-500 dark:text-zinc-400">
+      Price unavailable
+    </span>
+  );
 }
 
 export function Portfolio() {
@@ -62,7 +71,12 @@ export function Portfolio() {
     if (removingId === id) setRemovingId(null);
   }
 
-  const totals = portfolioTotals(holdings);
+  const prices = useLivePrices(holdings.map((holding) => holding.ticker));
+  const pricedHoldings = holdings.map((holding) => ({
+    ...holding,
+    currentPrice: prices[holding.ticker]?.price ?? null,
+  }));
+  const totals = portfolioTotals(pricedHoldings);
 
   return (
     <div className="flex w-full max-w-3xl flex-col gap-8">
@@ -110,7 +124,7 @@ export function Portfolio() {
                 </tr>
               </thead>
               <tbody>
-                {holdings.map((holding) => {
+                {pricedHoldings.map((holding) => {
                   if (editingId === holding.id) {
                     return (
                       <tr key={holding.id} className="border-b border-black/[.08] dark:border-white/[.145]">
@@ -136,13 +150,25 @@ export function Portfolio() {
                       <td className="py-2 pr-2 font-medium">{holding.ticker}</td>
                       <td className="py-2 pr-2">{holding.shares}</td>
                       <td className="py-2 pr-2">{currency.format(holding.costBasis)}</td>
-                      <td className="py-2 pr-2">{currency.format(holding.currentPrice)}</td>
-                      <td className={`py-2 pr-2 ${gainLossClass(gl)}`}>
-                        {gl >= 0 ? "+" : ""}
-                        {currency.format(gl)}
+                      <td className="py-2 pr-2">
+                        {holding.currentPrice === null ? (
+                          <PriceUnavailable />
+                        ) : (
+                          currency.format(holding.currentPrice)
+                        )}
                       </td>
-                      <td className={`py-2 pr-2 ${gainLossClass(glPercent)}`}>
-                        {formatPercent(glPercent)}
+                      <td className={`py-2 pr-2 ${gl === null ? "" : gainLossClass(gl)}`}>
+                        {gl === null ? (
+                          <PriceUnavailable />
+                        ) : (
+                          <>
+                            {gl >= 0 ? "+" : ""}
+                            {currency.format(gl)}
+                          </>
+                        )}
+                      </td>
+                      <td className={`py-2 pr-2 ${glPercent === null ? "" : gainLossClass(glPercent)}`}>
+                        {glPercent === null ? <PriceUnavailable /> : formatPercent(glPercent)}
                       </td>
                       <td className="py-2 pr-2">
                         {removingId === holding.id ? (

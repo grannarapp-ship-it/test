@@ -3,26 +3,42 @@ export type Holding = {
   ticker: string;
   shares: number;
   costBasis: number;
-  currentPrice: number;
 };
 
 export type HoldingInput = Omit<Holding, "id">;
 
-export function gainLoss(holding: Pick<Holding, "shares" | "costBasis" | "currentPrice">) {
+// currentPrice is null when a live price hasn't been fetched yet, or the
+// most recent fetch failed — callers must render an "unavailable" state
+// rather than treating null as zero.
+export type PricedHolding = Holding & { currentPrice: number | null };
+
+export function gainLoss(
+  holding: Pick<PricedHolding, "shares" | "costBasis" | "currentPrice">
+) {
+  if (holding.currentPrice === null) return null;
   return (holding.currentPrice - holding.costBasis) * holding.shares;
 }
 
-export function gainLossPercent(holding: Pick<Holding, "shares" | "costBasis" | "currentPrice">) {
+export function gainLossPercent(
+  holding: Pick<PricedHolding, "shares" | "costBasis" | "currentPrice">
+) {
+  const gl = gainLoss(holding);
+  if (gl === null) return null;
   const invested = holding.costBasis * holding.shares;
   if (invested === 0) return 0;
-  return (gainLoss(holding) / invested) * 100;
+  return (gl / invested) * 100;
 }
 
 export function portfolioTotals(
-  holdings: Pick<Holding, "shares" | "costBasis" | "currentPrice">[]
+  holdings: Pick<PricedHolding, "shares" | "costBasis" | "currentPrice">[]
 ) {
   const costBasis = holdings.reduce((sum, h) => sum + h.costBasis * h.shares, 0);
-  const currentValue = holdings.reduce((sum, h) => sum + h.currentPrice * h.shares, 0);
+  // Holdings with an unavailable price fall back to their cost basis so a
+  // single failed fetch doesn't understate the portfolio total.
+  const currentValue = holdings.reduce(
+    (sum, h) => sum + (h.currentPrice ?? h.costBasis) * h.shares,
+    0
+  );
   const gain = currentValue - costBasis;
   const gainPercent = costBasis === 0 ? 0 : (gain / costBasis) * 100;
   return { costBasis, currentValue, gain, gainPercent };
