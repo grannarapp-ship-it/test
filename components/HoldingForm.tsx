@@ -21,20 +21,15 @@ export function HoldingForm({
   const [costBasis, setCostBasis] = useState(
     initialValue?.costBasis?.toString() ?? ""
   );
-  const [currentPrice, setCurrentPrice] = useState(
-    initialValue?.currentPrice?.toString() ?? ""
-  );
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault();
     const parsedShares = Number(shares);
     const parsedCostBasis = Number(costBasis);
-    const parsedCurrentPrice = Number(currentPrice);
     if (
       !ticker.trim() ||
       !Number.isFinite(parsedShares) ||
-      !Number.isFinite(parsedCostBasis) ||
-      !Number.isFinite(parsedCurrentPrice)
+      !Number.isFinite(parsedCostBasis)
     ) {
       return;
     }
@@ -42,13 +37,11 @@ export function HoldingForm({
       ticker: ticker.trim().toUpperCase(),
       shares: parsedShares,
       costBasis: parsedCostBasis,
-      currentPrice: parsedCurrentPrice,
     });
     if (!initialValue) {
       setTicker("");
       setShares("");
       setCostBasis("");
-      setCurrentPrice("");
     }
   }
 
@@ -88,18 +81,6 @@ export function HoldingForm({
           value={costBasis}
           onChange={(e) => setCostBasis(e.target.value)}
           placeholder="150.00"
-          required
-        />
-      </label>
-      <label className="flex flex-col gap-1 text-sm">
-        Current price
-        <input
-          type="number"
-          step="any"
-          className="rounded border border-black/[.08] px-2 py-1 dark:border-white/[.145] dark:bg-black"
-          value={currentPrice}
-          onChange={(e) => setCurrentPrice(e.target.value)}
-          placeholder="175.00"
           required
         />
       </label>
